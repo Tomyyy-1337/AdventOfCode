@@ -1,5 +1,7 @@
 use rayon::{str::ParallelString, iter::ParallelIterator};
 
+const NUMBERS: [&str; 9] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
 fn main() {
     let path = "input/puzzle.txt";
     let sum = std::fs::read_to_string(path)
@@ -29,8 +31,7 @@ fn get_first_digit(line: &Vec<char>, inverse: bool) -> u32 {
 }
 
 fn is_nuber(index: usize, line: &Vec<char>) -> Option<u32> {
-    let numbers: [&str; 9] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-    for (i,&number) in numbers.iter().enumerate() {
+    for (i,&number) in NUMBERS.iter().enumerate() {
         if let Some(chars) = line.get(index..index + number.len()) {
             if chars.iter().collect::<String>() == number {
                 return Some(i as u32 + 1);

@@ -31,8 +31,8 @@ fn main() {
             parse_line(line)})
         .filter(|Game { rounds, .. }| {
             rounds.iter()
-                .filter(|Round { red, blue, green }| *red > 12 || *blue > 14 || *green > 13 )
-                .count() == 0})
+                .find(|Round { red, blue, green }| *red > 12 || *blue > 14 || *green > 13 )}
+                .is_none())
         .map(|Game { id, ..}| { id })
         .sum::<u32>(); 
 
@@ -75,7 +75,6 @@ fn parse_line(game: &str) -> Game {
         id,
         rounds,
     }
-
 }
 
 fn parse_rounds(game: &str) -> Vec<Token> {

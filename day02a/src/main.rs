@@ -46,7 +46,7 @@ fn parse_line(game: &str) -> Game {
     let mut rounds = Vec::new();
     let mut round = Round { red: 0, blue: 0, green: 0 };
     let mut num = 0;
-    for token in parse_token(game.get(2..).unwrap()) {
+    for token in parse_token(&game.split(" ").skip(1).collect::<String>()) {
         match token {
             Token::Digit(n) => num = num * 10 + n,
             Token::PlayerChar(p) => {

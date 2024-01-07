@@ -28,7 +28,7 @@ fn main() {
     let sum = std::fs::read_to_string(path).unwrap()
         .par_lines()
         .map(|line| {
-            parse_line(line)})
+            parse_line(line.get(5..).unwrap())})
         .filter(|Game { rounds, .. }| {
             rounds.iter()
                 .find(|Round { red, blue, green }| *red > 12 || *blue > 14 || *green > 13 )}
@@ -40,20 +40,15 @@ fn main() {
 }
 
 fn parse_line(game: &str) -> Game {
-    let mut id = game.chars().nth(5).unwrap() as u32 - 48;
-    let mut game = game.get(6..).unwrap(); 
-    while ('0'..='9').contains(&game.chars().nth(0).unwrap()) {
-        id  = 10 * id + game.chars().nth(0).unwrap() as u32 - 48;
-        game = game.get(1..).unwrap();
-    }
+    let id = game.chars()
+        .take_while(|c| ('0'..='9').contains(c))
+        .fold(0, |acc, c| 10 * acc + c as u32 - 48);
     let mut rounds = Vec::new();
     let mut round = Round { red: 0, blue: 0, green: 0 };
     let mut num = 0;
-    for token in parse_rounds(game.get(2..).unwrap()) {
+    for token in parse_token(game.get(2..).unwrap()) {
         match token {
-            Token::Digit(n) => {
-                num = num * 10 + n;
-            },
+            Token::Digit(n) => num = num * 10 + n,
             Token::PlayerChar(p) => {
                 if num != 0 {
                     match p {
@@ -77,7 +72,7 @@ fn parse_line(game: &str) -> Game {
     }
 }
 
-fn parse_rounds(game: &str) -> Vec<Token> {
+fn parse_token(game: &str) -> Vec<Token> {
     game.chars()
         .map(|c| {
             match c {

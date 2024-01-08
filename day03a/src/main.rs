@@ -14,6 +14,20 @@ struct Schematic {
 }
 
 impl Schematic {
+    pub fn new(str: &str) -> Schematic {
+        Schematic {
+            width: str.lines().next().unwrap().len() as u32,
+            height: str.lines().count() as u32,
+            components: str.chars()
+                .filter_map(|c| match c {
+                    '0'..='9' => Some(Component::Digit(c as u32 - '0' as u32)),
+                    '.' => Some(Component::Empty),
+                    '\r' | '\n' => None,
+                    c => Some(Component::Symbol(c)),
+                }).collect(),
+        }
+    }
+
     fn get_component(&self, x: u32, y: u32) -> &Component {
         &self.components[(y * self.width + x) as usize]
     }
@@ -83,20 +97,10 @@ impl Schematic {
 
 fn main() {
     let path = "input/test.txt";
-    let contents = std::fs::read_to_string(path).expect("Failed to read file");
-    let sum = Schematic {
-        width: contents.lines().next().unwrap().len() as u32,
-        height: contents.lines().count() as u32,
-        components: contents.chars()
-            .filter_map(|c| match c {
-                '0'..='9' => Some(Component::Digit(c as u32 - '0' as u32)),
-                '.' => Some(Component::Empty),
-                '\r' | '\n' => None,
-                c => Some(Component::Symbol(c)),
-            }).collect(),
-    }.get_numbers()
-    .iter()
-    .sum::<u32>();
+    let sum = Schematic::new(&std::fs::read_to_string(path).unwrap())
+        .get_numbers()
+        .iter()
+        .sum::<u32>();
 
     println!("Summe = {}", sum);
 }

@@ -15,8 +15,7 @@ impl Card {
             .collect::<Vec<&str>>()[1]
             .parse::<u32>()
             .unwrap();
-        let numbers = row.get(1)
-            .unwrap()
+        let numbers = row[1]
             .split("|")
             .collect::<Vec<&str>>();
         Card {

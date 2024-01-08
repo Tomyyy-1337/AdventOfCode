@@ -43,21 +43,18 @@ fn main() {
     let path = "input/puzzle.txt";
     let contents = std::fs::read_to_string(path).unwrap();
     let table_size = contents.lines().count();
-    let mut cards: Vec<Card>  = contents
-        .lines()
+    let mut lookup: Vec<u32> = vec![1; table_size];
+    contents.lines()
         .map(|line| Card::new(line))
-        .collect();
-
-    let mut index = 0;
-    while index < cards.len() {
-        let points = cards[index].get_points();
-        let start = cards[index].id as usize;
-        for d in start..(start + points as usize).min(table_size) {
-            cards.push(cards[d].clone());
-        }
-        index += 1;
-    }
-    let sum = cards.len();
+        .rev()
+        .for_each(|card| {
+            let points = card.get_points();
+            let start = card.id as usize;
+            for d in start..(start + points as usize).min(table_size) {
+                lookup[start-1] += lookup[d];
+            }
+        });
+    let sum: u32 = lookup.iter().sum();
 
     println!("Sum: {}", sum);
 }

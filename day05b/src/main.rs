@@ -9,6 +9,14 @@ struct Range {
 }
 
 impl Range {
+    pub fn new(start_input: u64, start_output: u64, width: u64) -> Self {
+        Self {
+            start_input,
+            start_output,
+            width,
+        }
+    }
+
     pub fn map(&self, n: u64) -> u64 {
         if self.start_input <= n && n < self.start_input + self.width {
             self.start_output + n - self.start_input
@@ -55,11 +63,7 @@ fn main() {
                     .collect();
                 map.get_or_insert_with(|| CustomMap { ranges: Vec::new() })
                     .ranges
-                    .push(Range {
-                        start_input: nums[1],
-                        start_output: nums[0],
-                        width: nums[2],
-                    });
+                    .push(Range::new(nums[1], nums[0], nums[2]));
             } else if let Some(map) = map.take() {
                 maps.push(map);
             }
@@ -75,8 +79,7 @@ fn main() {
         .map(|chunk| chunk[0]..chunk[0] + chunk[1])
         .flatten()
         .map(|seed| {
-            maps.iter()
-                .fold(seed, |n, map| map.map_recursive(n))})
+            maps.iter().fold(seed, |n, map| map.map_recursive(n))})
         .min()
         .unwrap();
     

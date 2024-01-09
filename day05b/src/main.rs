@@ -1,3 +1,6 @@
+use rayon::iter::ParallelIterator;
+use rayon::slice::ParallelSlice;
+
 #[derive(Clone)]
 struct Range {
     start_input: u64,
@@ -21,7 +24,7 @@ struct CustomMap {
 }
 
 impl CustomMap {
-    pub fn map(&self, n: u64) -> u64 {
+    pub fn map_recursive(&self, n: u64) -> u64 {
         self.ranges.iter().find_map(|range| {
             if range.map(n) != n {
                 Some(range.map(n))
@@ -39,12 +42,6 @@ fn main() {
         .split("\r")
         .filter(|&s| s != "\n")
         .map(|s| s.replace("\n", "").to_string()) // Convert &str to String
-        .collect();
-
-    let seeds: Vec<u64> = contents[0]
-        .split_ascii_whitespace()
-        .skip(1)
-        .map(|s| s.parse::<u64>().unwrap())
         .collect();
     
     contents.push("end".to_string());
@@ -69,8 +66,17 @@ fn main() {
             (maps, map)
         }).0;
 
-    let min = seeds.iter()
-        .map(|seed| maps.iter().fold(*seed, |n, map| map.map(n)))
+    let min = contents[0]
+        .split_ascii_whitespace()
+        .skip(1)
+        .filter_map(|s| s.parse::<u64>().ok())
+        .collect::<Vec<_>>()
+        .par_chunks_exact(2)
+        .map(|chunk| chunk[0]..chunk[0] + chunk[1])
+        .flatten()
+        .map(|seed| {
+            maps.iter()
+                .fold(seed, |n, map| map.map_recursive(n))})
         .min()
         .unwrap();
     

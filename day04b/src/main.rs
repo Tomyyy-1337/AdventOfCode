@@ -26,7 +26,7 @@ impl Card {
     }
 
     fn parse_numbers(str: &str) -> Vec<u32> {
-        str.split(" ")
+        str.split_ascii_whitespace()
             .filter_map(|n| n.parse::<u32>().ok())
             .collect()
     }

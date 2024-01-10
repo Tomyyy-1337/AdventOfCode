@@ -9,6 +9,6 @@ fn main() {
         let result = (1..time).into_iter()
             .filter(|i|  i * (time - i) > distance )
             .count();
-    
+   
     println!("{}", result);
 }

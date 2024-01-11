@@ -1,24 +1,31 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
 enum Direction {
     Left,
     Right,
 }
 
-#[derive(Clone)]
 struct Path {
     left: String,
     right: String,
 }
 
 impl Path {
-    pub fn get_path(&self, direction: Direction) -> &str {
+    pub fn get_path(&self, direction: &Direction) -> &str {
         match direction {
             Direction::Left => &self.left,
             Direction::Right => &self.right,
         }
     }
+}
+
+fn ggt(a: u64, b: u64) -> u64 {
+    if b == 0 { return a }
+    ggt(b, a % b)
+}
+
+fn kgv(a: u64, b: u64) -> u64 {
+    a * b / ggt(a, b)
 }
 
 fn main() {
@@ -43,13 +50,18 @@ fn main() {
             (key, Path{left, right})
         }).collect();
 
-    let mut position = "AAA";
-    let mut indx = 0;
-    while position != "ZZZ" {
-        let direction = directions[indx % directions.len()];
-        position = lookup.get(position).unwrap().get_path(direction);
-        indx += 1;
-    }
+    let result = contents.lines().skip(2)
+        .filter(|line| line.chars().nth(2) == Some('A'))
+        .map(|line| line.get(0..=2).unwrap())
+        .map(| mut position | {
+            let mut indx = 0;
+            while position.chars().nth(2) != Some('Z') {
+                let direction = &directions[indx % directions.len()];
+                position = lookup.get(position).unwrap().get_path(direction);
+                indx += 1;
+            }
+            indx as u64
+        }).fold(1, |acc, num| kgv(acc, num));
     
-    println!("{} steps required", indx);
+    println!("{:?} steps required", result);
 }

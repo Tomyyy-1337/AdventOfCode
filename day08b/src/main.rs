@@ -63,5 +63,5 @@ fn main() {
             indx as u64
         }).fold(1, |acc, num| kgv(acc, num));
     
-    println!("{:?} steps required", result);
+    println!("{} steps required", result);
 }

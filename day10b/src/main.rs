@@ -124,6 +124,33 @@ impl Map {
             }).next().unwrap();
         self.contents[i] = Tile::from_directions(dirs);
     }
+
+    fn count_walls(&self, mut x: usize, y: usize) -> i32 {
+        let mut walls = 0;
+        while self.get(x, y).is_some() {
+            x += 1;
+            if let Some(Tile::Pipe(directions)) = self.get(x, y) {
+                if directions.contains(&Direction::Up) && directions.contains(&Direction::Down) {
+                    walls += 1;
+                } else if directions.contains(&Direction::Right) && !directions.contains(&Direction::Left) {
+                    let from_dir = directions.iter().filter(|&dir| dir != &Direction::Right).next().unwrap();
+                    let mut x_tmp = x + 1;
+                    while self.get(x_tmp, y).is_some() {
+                        if let Some(Tile::Pipe(directions)) = self.get(x_tmp, y) {
+                            if directions.contains(&from_dir.opposite()) && directions.contains(&Direction::Left) {
+                                walls += 1;
+                                break;
+                            } else if !directions.contains(&Direction::Left) || !directions.contains(&Direction::Right) {
+                                break;
+                            }
+                        }
+                        x_tmp += 1;
+                    }
+                }
+            }    
+        }
+        walls
+    }
 }
 
 
@@ -152,35 +179,8 @@ fn main() {
     let num_enclosed: i32 = map.contents.iter()
         .enumerate()
         .filter(|(_, tile)| tile == &&Tile::Ground)
-        .map(|(i, _)| count_walls(&map, i % map.width, i / map.width) % 2)
+        .map(|(i, _)| map.count_walls(i % map.width, i / map.width) % 2)
         .sum();
 
     println!("Enclosed Tiles: {}", num_enclosed);
-}
-
-fn count_walls(map: &Map, mut x: usize, y: usize) -> i32 {
-    let mut walls = 0;
-    while map.get(x, y).is_some() {
-        x += 1;
-        if let Some(Tile::Pipe(directions)) = map.get(x, y) {
-            if directions.contains(&Direction::Up) && directions.contains(&Direction::Down) {
-                walls += 1;
-            } else if directions.contains(&Direction::Right) && !directions.contains(&Direction::Left) {
-                let from_dir = directions.iter().filter(|&dir| dir != &Direction::Right).next().unwrap();
-                let mut x_tmp = x + 1;
-                while map.get(x_tmp, y).is_some() {
-                    if let Some(Tile::Pipe(directions)) = map.get(x_tmp, y) {
-                        if directions.contains(&from_dir.opposite()) && directions.contains(&Direction::Left) {
-                            walls += 1;
-                            break;
-                        } else if !directions.contains(&Direction::Left) || !directions.contains(&Direction::Right) {
-                            break;
-                        }
-                    }
-                    x_tmp += 1;
-                }
-            }
-        }    
-    }
-    walls
 }

@@ -1,5 +1,4 @@
-use core::num;
-use std::iter;
+const DIRS: [Direction; 4] = [Direction::Right, Direction::Down, Direction::Left, Direction::Up];
 
 #[derive(PartialEq, Eq, Clone)]
 enum Direction {
@@ -29,7 +28,7 @@ impl Direction {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 enum Tile {
     Pipe(Vec<Direction>),
     Ground,
@@ -49,6 +48,16 @@ impl Tile {
             'S' => Tile::Start,
             _ => panic!("Invalid pipe character: {}", c),
         }
+    }
+
+    pub fn from_directions(dirs: Vec<Direction>) -> Tile {
+        if dirs.contains(&Direction::Up) && dirs.contains(&Direction::Down) {return Tile::new('|')}
+        if dirs.contains(&Direction::Left) && dirs.contains(&Direction::Right) {return Tile::new('-')}
+        if dirs.contains(&Direction::Up) && dirs.contains(&Direction::Right) {return Tile::new('L')}
+        if dirs.contains(&Direction::Up) && dirs.contains(&Direction::Left) {return Tile::new('J')}
+        if dirs.contains(&Direction::Down) && dirs.contains(&Direction::Left) {return Tile::new('7')}
+        if dirs.contains(&Direction::Down) && dirs.contains(&Direction::Right) {return Tile::new('F')}
+        panic!("Invalid directions");
     }
 }
 
@@ -71,24 +80,20 @@ impl Map {
         self.contents.get(y * self.width + x)
     }
 
-    fn set(&mut self, x: usize, y: usize, tile: Tile) {
-        self.contents[y * self.width + x] = tile;
-    }
-
-    fn get_next(&self, x: usize, y: usize, dir: &Direction) -> Option<&Tile> {
+    fn get_next_tile(&self, x: usize, y: usize, dir: &Direction) -> Option<&Tile> {
         let (dx, dy) = dir.as_tuple();
         self.get((x as i32 + dx) as usize, (y as i32 + dy) as usize)
     }
 
-    fn get_connected_pipes(&self,from: &Direction, x: usize, y: usize) -> Direction {
+    fn next_direction(&self,from: &Direction, x: usize, y: usize) -> Direction {
         let tile = self.get(x, y);
         match tile {
             Some(Tile::Pipe(directions)) => {
                 directions.iter().filter(|&d| d != &from.opposite()).next().unwrap().clone() 
             },
             Some(Tile::Start) => {
-                for direction in vec![Direction::Right, Direction::Down, Direction::Left, Direction::Up] {
-                    if let Some(Tile::Pipe(directions)) = self.get_next(x, y, &direction) {
+                for direction in DIRS {
+                    if let Some(Tile::Pipe(directions)) = self.get_next_tile(x, y, &direction) {
                         if directions.contains(&direction.opposite()) {
                             return direction;
                         }
@@ -99,46 +104,83 @@ impl Map {
             _ => panic!("Could not find connected pipe"),
         }
     }
+
+    fn replace_start(&mut self) {
+        let (dirs, i) = self.contents.iter()
+            .enumerate()
+            .filter_map(|(i,tile)| {
+                if let Tile::Start = tile {
+                    let dirs = DIRS.iter().filter_map(|direction| {
+                        if let Some(Tile::Pipe(directions)) = self.get_next_tile(i % self.width, i / self.width, &direction) {
+                            if directions.contains(&direction.opposite()) {
+                                return Some(direction.clone());
+                            }
+                        }
+                        None
+                    }).collect::<Vec<_>>(); 
+                    return Some((dirs, i))
+                } 
+                None
+            }).next().unwrap();
+        self.contents[i] = Tile::from_directions(dirs);
+    }
 }
 
 
 fn main() {
-    let path = "input/test.txt";
-    let map = Map::new(&std::fs::read_to_string(path).unwrap());
-    
-    let mut num_enclosed = 0;
-    for x in 0..map.width {
-        for y in 0..map.height {
-            if let Some(Tile::Ground) = map.get(x, y) {
-                let mut x_pos = x;
-                let mut wall_counter = 0;
-                while let Some(tile) = map.get(x_pos, y) {
-                    if let Tile::Pipe(dirs) = tile {
-                        if dirs.contains(&Direction::Up) && dirs.contains(&Direction::Down) { 
-                            wall_counter += 1
-                        } else if dirs.contains(&Direction::Right) { 
-                            let direction = dirs.iter().filter(|&d| d != &Direction::Right).next().unwrap().clone();
-                            while let Some(Tile::Pipe(dirs)) = map.get(x_pos, y) {
-                                if dirs.contains(&Direction::Left) {
-                                    if dirs.contains(&direction.opposite()) {
-                                        wall_counter += 1;
-                                        break;
-                                    }
-                                    x_pos += 1;
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    x_pos += 1;
-                }
-                if wall_counter % 2 == 1 {
-                    num_enclosed += 1;
-                }
-            }
+    let path = "input/puzzle.txt";
+    let mut map = Map::new(&std::fs::read_to_string(path).unwrap());
+
+    let start_indx = map.contents.iter().position(|t| t == &Tile::Start).unwrap();
+    let mut x = start_indx % map.width;
+    let mut y = start_indx / map.width;
+    let mut dir = map.next_direction(&Direction::Up, x, y);
+    let mut loop_tiles: Vec<Tile> = vec![Tile::Ground; map.width * map.height];
+    loop {
+        loop_tiles[y * map.width + x] = map.get(x, y).unwrap().clone();
+        dir = map.next_direction(&dir, x, y);
+        let (dx, dy) = dir.as_tuple();
+        x = (x as i32 + dx) as usize;
+        y = (y as i32 + dy) as usize;
+        if map.get(x, y) == Some(&Tile::Start) {
+            break;
         }
     }
+    map.contents = loop_tiles;
+    map.replace_start();
+    
+    let num_enclosed: i32 = map.contents.iter()
+        .enumerate()
+        .filter(|(_, tile)| tile == &&Tile::Ground)
+        .map(|(i, _)| count_walls(&map, i % map.width, i / map.width) % 2)
+        .sum();
 
-    println!("Sum: {}", num_enclosed);
+    println!("Enclosed Tiles: {}", num_enclosed);
+}
+
+fn count_walls(map: &Map, mut x: usize, y: usize) -> i32 {
+    let mut walls = 0;
+    while map.get(x, y).is_some() {
+        x += 1;
+        if let Some(Tile::Pipe(directions)) = map.get(x, y) {
+            if directions.contains(&Direction::Up) && directions.contains(&Direction::Down) {
+                walls += 1;
+            } else if directions.contains(&Direction::Right) && !directions.contains(&Direction::Left) {
+                let from_dir = directions.iter().filter(|&dir| dir != &Direction::Right).next().unwrap();
+                let mut x_tmp = x + 1;
+                while map.get(x_tmp, y).is_some() {
+                    if let Some(Tile::Pipe(directions)) = map.get(x_tmp, y) {
+                        if directions.contains(&from_dir.opposite()) && directions.contains(&Direction::Left) {
+                            walls += 1;
+                            break;
+                        } else if !directions.contains(&Direction::Left) || !directions.contains(&Direction::Right) {
+                            break;
+                        }
+                    }
+                    x_tmp += 1;
+                }
+            }
+        }    
+    }
+    walls
 }

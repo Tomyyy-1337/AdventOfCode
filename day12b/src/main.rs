@@ -2,7 +2,7 @@ use indicatif::ParallelProgressIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Status {
     Operational,
     Damaged,
@@ -20,72 +20,102 @@ impl Status {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct Row {
     status: Vec<Status>,
-    groups: Vec<i64>,
+    groups: Vec<i32>,
     first_group_changed: bool,
 }
 
 impl Row {
     fn from_str(s: &str) -> Row {
         let mut s_iter = s.split_ascii_whitespace();
-        let mut status: Vec<Status> = s_iter.next().unwrap().chars().map(Status::from_char).collect();
-        status.push(Status::Operational);
-        let groups: Vec<i64> = s_iter.next().unwrap().split(',').map(|x| x.parse::<i64>().unwrap()).collect();
+        let status: Vec<Status> = s_iter.next().unwrap().chars().map(Status::from_char).collect();
+        let mut status_extendet: Vec<Status> = (0..5).into_iter().flat_map(|_| {
+            let mut arr = status.clone();
+            arr.push(Status::Unknown);
+            arr
+        }).collect();
+        let indx = status_extendet.len() - 1;
+        status_extendet[indx] = Status::Operational;
+        let groups: Vec<i32> = s_iter.next().unwrap().split(',').map(|x| x.parse::<i32>().unwrap()).collect();
+        let groups_extendet: Vec<i32> = (0..5).into_iter().flat_map(|_| groups.clone()).rev().collect();
         let first_group_changed = false;
-        Row { status, groups, first_group_changed }
+        Row { status: status_extendet, groups: groups_extendet, first_group_changed }
     }
 
     fn count_valid(&mut self) -> u64 {
-        match self.status.first() {
-            Some(Status::Operational) => {
-                if self.groups[0] == 0 {
-                    self.groups.remove(0);
-                    self.first_group_changed = false;
-                }
-                if self.first_group_changed {
-                    return 0;
-                }
-                if self.groups.len() == 0 {
-                    if self.status.contains(&Status::Damaged) {
-                        return 0;
-                    } else {
-                        return 1;
+        let mut result = 0;
+        let mut stack: Vec<Row> = vec![self.clone()];
+        
+        while let Some(mut current) = stack.pop() {
+            match current.status.first() {
+                Some(Status::Operational) => {
+                    if current.groups.iter().sum::<i32>() > current.status.iter().filter(|&&s| s != Status::Operational).count() as i32 {
+                        continue;
                     }
-                }
-                self.status.remove(0);
-                return self.count_valid();
-            },
-            Some(Status::Damaged) => {
-                self.groups[0] -= 1;
-                self.first_group_changed = true;
-                if self.groups[0] < 0 {
-                    return 0;
-                }
-                self.status.remove(0);
-                return self.count_valid();
-            },
-            Some(Status::Unknown) => {
-                let mut row1 = self.clone();
-                let mut row2 = self.clone();
-                row1.status[0] = Status::Operational;
-                row2.status[0] = Status::Damaged;
-                return row1.count_valid() + row2.count_valid();
-            },
-            None => return 0,
+                    if current.groups.last().unwrap() == &0 {
+                        current.groups.pop();
+                        current.first_group_changed = false;
+                    }
+                    if current.first_group_changed {
+                        continue;
+                    }
+                    if current.groups.len() == 0 {
+                        if current.status.contains(&Status::Damaged) {
+                            continue;
+                        } else {
+                            result += 1;
+                            continue;
+                        }
+                    }
+                    current.status.remove(0);
+                    stack.push(current);
+                },
+                Some(Status::Damaged) => {
+                    let indx = current.groups.len() - 1;
+                    if current.groups[indx] == 0 {
+                        continue;
+                    }
+                    let operational_indx = (current.status.iter().position(|x| *x == Status::Operational).unwrap() as i32).min(current.groups[indx]);
+                    current.groups[indx] -= operational_indx;
+                    current.first_group_changed = true;
+                    current.status.drain(..operational_indx as usize);
+                    stack.push(current);
+                },
+                Some(Status::Unknown) => {
+                    if current.groups.last().unwrap() == &0 {
+                        current.status[0] = Status::Operational;
+                        stack.push(current);
+                        continue;
+                    }
+                    let mut row1 = current.clone();
+                    row1.status[0] = Status::Operational;
+                    current.status[0] = Status::Damaged;
+                    stack.push(row1);
+                    stack.push(current);
+                },
+                None => continue,
+            }
         }
+        result
     }
 }
 
 fn main() {
-    let path = "input/puzzle.txt";
+    rayon::ThreadPoolBuilder::new().num_threads(18).build_global().unwrap();
+
+    let path = "input/test.txt";
     let mut rows: Vec<Row>  = std::fs::read_to_string(path).unwrap().lines().map(Row::from_str).collect();
 
+    //start timer
+    let now = std::time::Instant::now();
     let sum: u64 = rows.par_iter_mut()
         .progress()
         .map(Row::count_valid) 
         .sum();
-
+    //stop timer
+    let elapsed = now.elapsed();
+    println!("Time: {:?}", elapsed);
     println!("Sum: {}", sum);
 }

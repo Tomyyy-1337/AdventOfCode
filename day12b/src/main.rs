@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
+use rayon::str::ParallelString;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Status {
     Operational,
     Unknown,
@@ -20,33 +20,31 @@ impl Status {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 struct Row {
     springs: Vec<Status>,
     groups: Vec<i32>,
+    lookup: HashMap<(Vec<Status>, Vec<i32>), u64>,
 }
 
 impl Row {
     fn from_str(s: &str) -> Row {
         let mut s_iter = s.split_ascii_whitespace();
-        let mut status: Vec<Status> = s_iter.next().unwrap().chars().map(Status::from_status).collect();
-        status.push(Status::Unknown);
-        let mut status_extendet: Vec<Status> = (0..5).into_iter().flat_map(|_| status.clone()).rev().collect();
-        status_extendet.remove(0);
-        let groups: Vec<i32> = s_iter.next().unwrap().split(',').map(|x| x.parse::<i32>().unwrap()).collect();
-        let groups_extendet: Vec<i32> = (0..5).into_iter().flat_map(|_| groups.clone()).rev().collect();
-        Row { springs: status_extendet, groups: groups_extendet }
+        let mut springs: Vec<Status> = s_iter.next().unwrap().chars().map(Status::from_status).rev().collect();
+        springs.push(Status::Unknown);
+        springs = (0..5).into_iter().flat_map(|_| springs.clone()).rev().skip(1).collect();
+        let mut  groups: Vec<i32> = s_iter.next().unwrap().split(',').filter_map(|x| x.parse::<i32>().ok()).collect();
+        groups = (0..5).into_iter().flat_map(|_| groups.clone()).collect();
+        Row { springs, groups, lookup: HashMap::new() }
     }
 
-    pub fn count_arrangements(self) -> u64{
-        let mut lookup: HashMap<(Vec<Status>, Vec<i32>), u64> = HashMap::new();
-        Self::count_rec(&mut lookup, &self.springs, &self.groups)
+    pub fn count_arrangements(mut self) -> u64 {
+        self.count_rec( self.springs.clone(), self.groups.clone())
     }
 
-    fn count_rec(memo: &mut HashMap<(Vec<Status>, Vec<i32>), u64>, springs: &Vec<Status>, groups: &Vec<i32>) -> u64 {
+    fn count_rec(&mut self, springs: Vec<Status>, groups: Vec<i32>) -> u64 {
         let key = (springs.clone(), groups.clone());
-    
-        if let Some(&result) = memo.get(&key) {
+        if let Some(&result) = self.lookup.get(&key) {
             return result;
         }
     
@@ -54,7 +52,7 @@ impl Row {
             [] => if !springs.contains(&Status::Damaged) { 1 } else { 0 } 
             [s, ss @ ..] => match springs.as_slice() {
                 [] => 0,
-                [Status::Operational, cs @ ..] => Self::count_rec(memo, &cs.to_vec(), groups),
+                [Status::Operational, cs @ ..] => self.count_rec(cs.to_vec(), groups),
                 [Status::Damaged, cs @ ..] if cs.len() >= (*s as usize - 1) => {
                     let (sub, rest) = cs.split_at(*s as usize - 1);
                     if sub.contains(&Status::Operational) {
@@ -62,31 +60,31 @@ impl Row {
                     }
                     match rest {
                         [] => if ss.is_empty() { 1 } else { 0 },
-                        [Status::Operational | Status::Unknown, rs @ ..] => Self::count_rec(memo, &rs.to_vec(), &ss.to_vec()),
+                        [Status::Operational | Status::Unknown, rs @ ..] => self.count_rec(rs.to_vec(), ss.to_vec()),
                         _ => 0,
                     }
                 }
                 [Status::Unknown, cs @ ..] => {
-                    let damaged_count = Self::count_rec(memo, &vec![Status::Damaged].into_iter().chain(cs.iter().cloned()).collect(), groups);
-                    let operational_count = Self::count_rec(memo, &cs.to_vec(), groups);
+                    let damaged_count = self.count_rec(vec![Status::Damaged].into_iter().chain(cs.iter().cloned()).collect(), groups.clone());
+                    let operational_count = self.count_rec(cs.to_vec(), groups);
                     damaged_count + operational_count
                 }
                 _ => 0,
             },
         };
-        memo.insert(key, result);
+
+        self.lookup.insert(key, result);
         result
     }
 }
 
     
 fn main() {
-    rayon::ThreadPoolBuilder::new().num_threads(18).build_global().unwrap();
-
     let path = "input/puzzle.txt";
-    let rows: Vec<Row>  = std::fs::read_to_string(path).unwrap().lines().map(Row::from_str).collect();
-    
-    let sum: u64 = rows.into_par_iter()
+
+    let sum: u64 = std::fs::read_to_string(path).unwrap()
+        .par_lines()
+        .map(Row::from_str)
         .map(Row::count_arrangements) 
         .sum();
 

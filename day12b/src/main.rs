@@ -15,7 +15,7 @@ impl Status {
             '.' => Status::Operational,
             '#' => Status::Damaged,
             '?' => Status::Unknown,
-            _ => panic!("Invalid status Status"),
+            _ => panic!("Invalid Status"),
         }
     }
 }

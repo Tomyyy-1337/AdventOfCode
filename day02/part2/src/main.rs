@@ -1,5 +1,3 @@
-use rayon::{str::ParallelString, iter::ParallelIterator};
-
 enum Token {
     Digit(u32),
     PlayerChar(Color),
@@ -24,8 +22,9 @@ struct Round {
 
 fn main() {
     let path = "input/puzzle.txt";
+
     let sum = std::fs::read_to_string(path).unwrap()
-        .par_lines()
+        .lines()
         .map(|line| {
             parse_line(line.get(5..).unwrap())
         }).map(|game| {
@@ -35,6 +34,7 @@ fn main() {
             max_red * max_blue * max_green
         })
         .sum::<u32>();
+
     println!("Summe: {}", sum);
 }
 

@@ -29,7 +29,7 @@ impl Tag {
         match s {
             "A" => Tag::Accept,
             "R" => Tag::Reject,
-            _ => Tag::Named(s.to_string().replace("\r", "")),
+            _ => Tag::Named(s.to_string()),
         }
     }
 }
@@ -115,10 +115,10 @@ impl Workflow {
 
 fn main() {
     let path = "input/puzzle.txt";
-
+    
     let contents = std::fs::read_to_string(path).unwrap();
-    let mut input = contents.split("\n\r\n");
-
+    let mut input = contents.split("\r\n\r\n");
+    
     let workflow_map: HashMap<Tag, Workflow> = input.next().unwrap()
         .lines()
         .map(Workflow::from_str)

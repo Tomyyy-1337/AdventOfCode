@@ -16,20 +16,17 @@ struct Garden {
 
 impl Garden {
     fn from_str(s: &str) -> Garden {
-        let width = s.lines().next().unwrap().len();
-        let height = s.lines().count();
-        let start_indx = s.chars().filter(|&c| c != '\n' && c != '\r').position(|c| c == 'S').unwrap();
+        let width = s.lines().next().unwrap().len() as usize;
+        let height = s.lines().count() as usize;
+        let start_indx = s.chars().filter(|&c| c != '\n' && c != '\r').position(|c| c == 'S').unwrap() as usize;
         let start = (start_indx % width, start_indx / width);
-        let tiles = s.lines()
-            .map(|line| {
-                line.chars().into_iter()
-                .map(|c| match c {
-                    '.' | 'S' => Tile::Garden,
-                    '#' => Tile::Rock,
-                    _ => panic!("Invalid character in garden"),
-                })
-            }).flatten()
-            .collect::<Vec<Tile>>();
+        let tiles: Vec<Tile> = s.chars()
+            .filter_map(|c| match c {
+                '.' | 'S' => Some(Tile::Garden),
+                '#'       => Some(Tile::Rock),
+                _         => None,
+            })
+            .collect();
         Garden { tiles, width, height, start }
     }
 

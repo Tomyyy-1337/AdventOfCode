@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 hashbrown = "0.14.3"
 rayon = "1.8.1"
+priority-queue = "1.3.2"

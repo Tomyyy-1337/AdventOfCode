@@ -20,6 +20,7 @@ impl Brick {
 fn main() {
     let path = "input/puzzle.txt";
     let mut bricks: Vec<_> = std::fs::read_to_string(path).unwrap().lines().map(Brick::from_str).collect();
+    bricks.sort_by_key(|b| b.z1);
 
     while let Some((i, n)) = falling_brick(&bricks) {
         bricks[i].drop(n);

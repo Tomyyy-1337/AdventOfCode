@@ -26,7 +26,6 @@ impl Brick {
     }
 }
 
-
 fn main() {
     let path = "input/puzzle.txt";
     let mut bricks: Vec<_> = std::fs::read_to_string(path).unwrap().lines().enumerate().map(|(i,s)| Brick::from_str(s, i as u64) ).collect();

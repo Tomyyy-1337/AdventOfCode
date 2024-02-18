@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashSet, HashMap};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -25,14 +25,13 @@ impl Graph {
     }
 
     fn connected_nodes(&self, start: &str) -> usize {
-        let mut queue = vec![start.to_string()];
-        let mut visited = vec![start.to_string()];
-        while !queue.is_empty() {
-            let current = queue.remove(0);
-            for n in self.nodes.get(&current).unwrap() {
-                if !visited.contains(&n) {
-                    queue.push(n.clone());
-                    visited.push(n.clone());
+        let mut queue = VecDeque::from([start]);
+        let mut visited = HashSet::from([start]);
+        while let Some(current) = queue.pop_front(){
+            for n in self.nodes.get(current).unwrap() {
+                if !visited.contains(n.as_str()) {
+                    queue.push_back(n);
+                    visited.insert(n);
                 }
             }
         }
@@ -45,29 +44,27 @@ impl Graph {
     }
 
     fn find_shortest_path(&self, start: &str, end: &str) -> Vec<String> {
-        let mut queue = vec![start.to_string()];
-        let mut visited = vec![start.to_string()];
+        let mut queue = VecDeque::from([start]);
+        let mut visited = HashSet::from([start]);
         let mut parent = HashMap::new();
-        while !queue.is_empty() {
-            let current = queue.remove(0);
+        while let Some(current) = queue.pop_front() {
             if current == end {
                 break;
             }
-            for n in self.nodes.get(&current).unwrap() {
-                if !visited.contains(&n) {
-                    queue.push(n.clone());
-                    visited.push(n.clone());
-                    parent.insert(n, current.clone());
+            for n in self.nodes.get(current).unwrap() {
+                if !visited.contains(n.as_str()) {
+                    queue.push_back(n);
+                    visited.insert(n);
+                    parent.insert(n.as_str(), current);
                 }
             }
         }
         let mut path: Vec<String> = vec![end.to_string()];
         let mut current = end;
         while current != start {
-            current = parent.get(&current.to_string()).unwrap();
+            current = parent.get(current).unwrap();
             path.push(current.to_string());
         }
-        path.reverse();
         path
     }
 }
@@ -76,7 +73,7 @@ fn main() {
     let path = "input/puzzle.txt";
     let contents: String = std::fs::read_to_string(path).unwrap();
     let graph= Graph::from_str(&contents);
-    let max_iterations = 50;
+    let max_iterations = 100;
 
     loop {
         let mut graph = graph.clone();
@@ -85,25 +82,18 @@ fn main() {
             let mut rng = thread_rng();
             let random_key_1 = keys.choose(&mut rng).unwrap();
             let random_key_2 = keys.choose(&mut rng).unwrap();
-            graph.find_shortest_path(random_key_1, random_key_2)
-        }).fold(|| HashMap::new(), |mut acc, v| {
-            for n in v.windows(2) {
+            let path = graph.find_shortest_path(random_key_1, random_key_2);
+            path.windows(2).map(|n| {
                 let a = n[0].to_string();
                 let b = n[1].to_string();
-                if a < b {
-                    acc.insert((a, b), 1);
-                } else {
-                    acc.insert((b, a), 1);
-                }
-            }
-            acc
+                let key = if a < b { (a, b) } else { (b, a) };
+                (key, 1)
+            }).collect()
         }).reduce(|| HashMap::new(), |mut acc, v| {
-            for (k, v) in v {
-                *acc.entry(k).or_insert(0) += v;
-            }
+            v.iter().for_each(|(k, v)| *acc.entry(k.clone()).or_insert(0) += v);
             acc
         });
-
+        
         let mut v: Vec<_> = edge_counts.iter().collect();
         v.sort_by_key(|(_,v)| *v);
         let v = v.iter().rev().take(3).map(|(k,_)|k).collect::<Vec<_>>();

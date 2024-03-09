@@ -16,9 +16,9 @@ impl Graph {
             let values: Vec<String> = iter.next().unwrap().split_ascii_whitespace().map(|s|s.to_string()).collect();
             (key.to_string(), values)
         }).collect();
-        for (k,v) in nodes.clone().iter() {
+        for (k,v) in nodes.clone().into_iter() {
             for n in v {
-                nodes.entry(n.to_string()).or_insert(Vec::new()).push(k.to_string());
+                nodes.entry(n).or_insert(Vec::new()).push(k.to_string());
             }
         }
         Graph { nodes }
@@ -72,7 +72,7 @@ impl Graph {
 fn main() {
     let path = "input/puzzle.txt";
     let contents: String = std::fs::read_to_string(path).unwrap();
-    let graph= Graph::from_str(&contents);
+    let graph = Graph::from_str(&contents);
     let max_iterations = 100;
 
     loop {

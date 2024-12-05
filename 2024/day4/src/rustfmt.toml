@@ -1,0 +1,4 @@
+# Control the use of braces in one-line blocks
+control_brace_style = "AlwaysSameLine"
+
+max_width = 220

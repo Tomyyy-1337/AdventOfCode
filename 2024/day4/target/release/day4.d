@@ -1,1 +1,0 @@
-C:\Users\tompa\Documents\RustProjekte\AdventOfCode\2024\day4\target\release\day4.exe: C:\Users\tompa\Documents\RustProjekte\AdventOfCode\2024\day4\input\puzzle C:\Users\tompa\Documents\RustProjekte\AdventOfCode\2024\day4\src\main.rs

@@ -127,4 +127,15 @@ impl Maze<Solved> {
             })
             .count()
     }
+
+    pub fn get_visited_index(&self) -> Vec<usize> {
+        self.maze
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| match c {
+                Cell::Empty { visited: true } => Some(i),
+                _ => None,
+            })
+            .collect()
+    }
 }

@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+use crate::bool_array_8::BoolArray8;
+
+#[derive(Clone, Copy)]
 enum Direction {
     Up,
     Down,
@@ -6,20 +8,29 @@ enum Direction {
     Right,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum SolveStatus {
+impl Direction {
+    fn right_turn(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Right,
+            Direction::Right => Direction::Down,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+        }
+    }
+}
+
+pub enum SolveStatus {
     Pending,
     LoopFound,
     OutOfMaze,
 }
 
-#[derive(Debug, Clone)]
-enum Cell {
-    Wall { visited: [bool; 4] },
+#[derive(Clone)]
+pub enum Cell {
+    Wall{ visited: BoolArray8 },
     Empty,
 }
 
-#[derive(Debug)]
 pub struct Maze {
     maze: Vec<Cell>,
     width: usize,
@@ -40,7 +51,7 @@ impl Maze {
         for (y, line) in input.lines().enumerate() {
             for (x, c) in line.chars().enumerate() {
                 match c {
-                    '#' => maze.push(Cell::Wall { visited: [false; 4] }),
+                    '#' => maze.push(Cell::Wall{ visited: BoolArray8::default() }),
                     '.' => maze.push(Cell::Empty),
                     '^' | 'v' | '<' | '>' => {
                         maze.push(Cell::Empty);
@@ -51,23 +62,15 @@ impl Maze {
                             '<' => Direction::Left,
                             '>' => Direction::Right,
                             _ => unreachable!(),
-                        };
-                    }
+                        };    
+                    },
                     _ => panic!("Invalid character in maze: {}", c),
                 }
             }
         }
-        Self {
-            maze,
-            width,
-            height,
-            guard_pos,
-            guard_direction,
-        }
+        Self { maze, width, height, guard_pos, guard_direction }	
     }
-}
 
-impl Maze {
     fn get_cell_in_front_mut(&mut self) -> Option<&mut Cell> {
         let (x, y) = self.guard_pos;
         match self.guard_direction {
@@ -79,31 +82,38 @@ impl Maze {
         }
     }
 
-    fn step(&mut self) -> SolveStatus {
+    pub fn step(&mut self) -> SolveStatus {
         let (x, y) = self.guard_pos;
         let guard_direction = self.guard_direction;
         match self.get_cell_in_front_mut() {
-            Some(Cell::Wall { visited }) if visited[guard_direction as usize] => return SolveStatus::LoopFound,
-            Some(Cell::Wall { visited }) => {
-                visited[guard_direction as usize] = true;
-                self.turn_right();
-            }
+            Some(Cell::Wall{ visited }) if visited.get(guard_direction as usize) => {
+                return SolveStatus::LoopFound
+            },
+            Some(Cell::Wall{ visited }) => {
+                visited.set(guard_direction as usize, true);
+                self.guard_direction = guard_direction.right_turn();
+            },
             Some(Cell::Empty) => {
-                self.move_forward(x, y);
-            }
+                self.guard_pos = match self.guard_direction {
+                    Direction::Up => (x, y - 1),
+                    Direction::Down => (x, y + 1),
+                    Direction::Left => (x - 1, y),
+                    Direction::Right => (x + 1, y),
+                };
+            },
             None => return SolveStatus::OutOfMaze,
         }
         SolveStatus::Pending
     }
 
-    pub fn has_loop(mut self) -> bool {
+    pub fn has_loop(mut self) -> bool { 
         loop {
             match self.step() {
                 SolveStatus::Pending => continue,
                 SolveStatus::LoopFound => return true,
                 SolveStatus::OutOfMaze => return false,
             }
-        }
+        } 
     }
 
     pub fn create_with_extra_wall(&self, index: usize) -> Option<Self> {
@@ -113,32 +123,25 @@ impl Maze {
         match self.maze.get(index) {
             Some(Cell::Empty) => {
                 let mut maze = self.maze.clone();
-                maze[index] = Cell::Wall { visited: [false; 4] };
-                Some(Self { maze, ..*self })
-            }
+                maze[index] = Cell::Wall{ visited: BoolArray8::default() };
+                Some(Self {
+                    maze,
+                    ..*self
+                })
+            },
             _ => return None,
         }
+    } 
+
+    pub fn get(&self, x: usize, y: usize) -> Option<&Cell> {
+        self.maze.get(y * self.width + x)
     }
 
-    fn turn_right(&mut self) {
-        self.guard_direction = match self.guard_direction {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
-        };
+    pub fn get_size(&self) -> (usize, usize) {
+        (self.width, self.height)
     }
 
-    fn move_forward(&mut self, x: usize, y: usize) {
-        self.guard_pos = match self.guard_direction {
-            Direction::Up => (x, y - 1),
-            Direction::Down => (x, y + 1),
-            Direction::Left => (x - 1, y),
-            Direction::Right => (x + 1, y),
-        };
-    }
-
-    pub fn get_number_of_cells(&self) -> usize {
-        self.width * self.height
+    pub fn get_guard_pos(&self) -> (usize, usize) {
+        self.guard_pos
     }
 }

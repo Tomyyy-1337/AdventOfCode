@@ -1,4 +1,5 @@
 fn main() {
+    let start = std::time::Instant::now();
     let contents = std::fs::read_to_string("input/puzzle").unwrap();
 
     let result = find_solution(&contents, part_1);
@@ -6,6 +7,7 @@ fn main() {
     
     let result = find_solution(&contents, part_2);
     println!("Part 2: {}", result);
+    println!("Time: {:?}", start.elapsed());
 }
 
 fn find_solution(contents: &str, filter: fn(u64, u64, &[u64]) -> bool) -> u64 {
@@ -30,6 +32,7 @@ fn part_1(acc: u64, target: u64, numbers: &[u64]) -> bool {
 fn part_2(acc: u64, target: u64, numbers: &[u64]) -> bool {
     match numbers {
         [] => acc == target,
+        [_, ..] if acc > target => false,
         [a, b @ ..] => {
             part_2(acc + a, target, b) || 
             part_2(acc * a, target, b) ||

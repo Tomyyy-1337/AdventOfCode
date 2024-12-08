@@ -1,4 +1,4 @@
-use std::{collections::HashSet, vec};
+use std::{collections::{self, HashSet}, vec};
 use itertools::Itertools;
 
 fn main() {
@@ -43,44 +43,41 @@ impl Puzzle {
         }
     }
 
-    fn solve_part_1(&self) -> usize {
+    fn solve<F, T>(&self, test_pair: F) -> usize
+    where
+        F: Fn(&usize, &usize) -> T,
+        T: IntoIterator<Item = usize>,
+    {
         self.positions_lookup.iter().flat_map(|entry| 
             entry
                 .iter()
                 .tuple_combinations()
-                .flat_map(|(a,b)| [(a,b), (b,a)])
-                .filter_map(|(a,b)| self.test_pair_part_1(a,b))
+                .flat_map(|(a, b)| test_pair(a, b))
         )
         .collect::<HashSet<_>>()
         .len()
+    }
+
+    fn solve_part_1(&self) -> usize {
+        self.solve(|a, b| self.test_pair_part_1(a, b))
     }
 
     fn solve_part_2(&self) -> usize {
-        self.positions_lookup.iter().flat_map(|entry| 
-            entry
-                .iter()
-                .tuple_combinations()
-                .flat_map(|(a,b)| self.test_pair_part_2(a,b))
-        )
-        .collect::<HashSet<_>>()
-        .len()
+        self.solve(|a, b| self.test_pair_part_2(a, b))
     }
 
-    fn test_pair_part_1(&self, indx1: &usize, indx2: &usize) -> Option<usize> {
+    fn test_pair_part_1(&self, indx1: &usize, indx2: &usize) -> Vec<usize> {
         let (x1, y1) = (indx1 % self.width, indx1 / self.width);
         let (x2, y2) = (indx2 % self.width, indx2 / self.width);
 
         let dx = x2 as i32 - x1 as i32;
         let dy = y2 as i32 - y1 as i32;
-
-        let new_x = x2 as i32 + dx;
-        let new_y = y2 as i32 + dy;
-
-        if new_x >= 0 && new_x < self.width as i32 && new_y >= 0 && new_y < self.height as i32 {
-            Some(new_x as usize + new_y as usize * self.width)
-        } else {
-            None
-        }
+        
+        [(-1, x1, y1), (1, x2, y2)].into_iter()
+            .map(|(step, x, y)| (x as i32 + step * dx, y as i32 + step * dy))
+            .filter(|&(x, y)| x >= 0 && x < self.width as i32 && y >= 0 && y < self.height as i32)
+            .map(|(x, y)| x as usize + y as usize * self.width)
+            .collect()
     }
     
     fn test_pair_part_2(&self, indx1: &usize, indx2: &usize) -> Vec<usize> {

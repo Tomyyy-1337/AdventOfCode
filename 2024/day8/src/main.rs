@@ -1,4 +1,4 @@
-use std::{collections::{self, HashSet}, vec};
+use std::{collections::HashSet, vec};
 use itertools::Itertools;
 
 fn main() {

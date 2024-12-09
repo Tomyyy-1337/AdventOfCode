@@ -2,10 +2,14 @@ use std::{fmt::Debug, iter};
 
 fn main() {
     let contents = include_str!("../input/puzzle");
+
+    let start = std::time::Instant::now();
     
     part_1(contents);
     
     part_2(contents);
+
+    println!("Elapsed: {:?}", start.elapsed());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +53,7 @@ fn part_2(contents: &str) {
         .collect::<Vec<_>>();
 
     let mut extract_index = filesystem.len() - 1;
+    let mut lookup = [0; 9]; 
     
     while extract_index > 0 {
         match filesystem[extract_index] {
@@ -56,24 +61,30 @@ fn part_2(contents: &str) {
                 extract_index -= 1;
             } 
             Block { block_type: BlockType::File { id }, length } => {
-                let insert_index = filesystem[0..extract_index]
+                let insert_index = filesystem[..extract_index]
                     .iter()
-                    .position(|x| x.block_type == BlockType::Empty && x.length >= length);
+                    .enumerate()
+                    .skip(*lookup[..length as usize].iter().max().unwrap())
+                    .find(|(_, x)| x.block_type == BlockType::Empty && x.length >= length)
+                    .map(|(i, _)| i);
                 
                 match insert_index {
                     Some(insert_index) if filesystem[insert_index].length == length => {
+                        lookup[length as usize - 1] = insert_index + 1;
                         filesystem[insert_index] = Block::file(id, length);
                         filesystem[extract_index] = Block::empty(length);
                         extract_index -= 2;
                     }
                     Some(insert_index) => {
                         let remaining = filesystem[insert_index].length - length;
+                        lookup[length as usize - 1] = insert_index + 1;
                         filesystem[insert_index] = Block::file(id, length);
                         filesystem[extract_index] = Block::empty(length);
                         filesystem.insert(insert_index + 1, Block::empty(remaining));
                         extract_index -= 1;
                     }
                     None => {
+                        lookup[length as usize - 1] = extract_index;
                         extract_index -= 1;
                     }
                 }

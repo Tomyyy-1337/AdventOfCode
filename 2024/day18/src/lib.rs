@@ -1,6 +1,29 @@
-use std::borrow::BorrowMut;
+use std::{borrow::BorrowMut, iter::TakeWhile, sync::{Arc, Mutex}};
 
 mod test;
+
+pub fn find_first_parallel(path: &str, width: usize, height: usize, chunk_size: usize) -> Option<(usize, usize)> {
+    let mut maze_gen = MazeGenerator::from_path(width, height, path);
+    
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    let mut indx = 0;
+
+    while maze_gen.has_next() {
+        let sender = sender.clone();
+        let chunk: Vec<_> = (0..chunk_size).map(|_| maze_gen.next_maze()).take_while(|maze| maze.is_some()).map(|maze| maze.unwrap()).collect();
+        std::thread::spawn(move || {
+            chunk
+                .into_iter()
+                .position(|maze| maze.find_shortest_path().is_none())
+                .map(|i| sender.send(indx + i).unwrap());
+        });
+        indx += chunk_size;
+    }
+    drop(sender);
+
+    receiver.iter().min().map(|i| maze_gen.corruppted[i])
+}
 
 pub struct MazeGenerator {
     width: usize,
@@ -11,6 +34,10 @@ pub struct MazeGenerator {
 }
 
 impl MazeGenerator {
+    pub fn has_next(&self) -> bool {
+        self.corrupted_indx < self.corruppted.len()
+    }
+
     pub fn from_path(width: usize, height: usize, path: &str) -> Self {
         let maze = vec![Cell::Empty{ seen: false }; width * height];
         let contents = std::fs::read_to_string(path).unwrap();
@@ -22,7 +49,7 @@ impl MazeGenerator {
         Self { width, height, corrupted_indx: 0, corruppted, maze }
     }
 
-    fn next_maze(&mut self) -> Option<Maze> {
+    pub fn next_maze(&mut self) -> Option<Maze> {
         if self.corrupted_indx == self.corruppted.len() {
             return None;
         }

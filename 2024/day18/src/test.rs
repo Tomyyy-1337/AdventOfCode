@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Maze, MazeGenerator};
+    use crate::{Maze, MazeGenerator, find_first_parallel};
 
     #[test]
     fn test_maze() {
@@ -24,5 +24,11 @@ mod tests {
     fn test_maze_generator2() {
         let maze_gen = MazeGenerator::from_path(71, 71, "input/puzzle");
         assert_eq!(maze_gen.find_blocking_byte(), Some((36, 17)));
+    }
+
+    #[test]
+    fn test_maze_generator_parallel() {
+        let result = find_first_parallel("input/puzzle", 71, 71, 50);
+        assert_eq!(result, Some((36, 17)));
     }
 }

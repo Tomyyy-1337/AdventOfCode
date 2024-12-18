@@ -99,7 +99,6 @@ impl Grid {
         }
 
         let mut sum = 0;
-
         for (edges_arr, area) in edges.iter_mut() {
             for i in 0..edges_arr.len() {
                 let mut j = i + 1;

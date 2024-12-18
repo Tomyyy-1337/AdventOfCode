@@ -2,11 +2,9 @@ use std::{fmt::Debug, iter};
 
 fn main() {
     let contents = include_str!("../input/puzzle");
-
     let start = std::time::Instant::now();
     
     part_1(contents);
-    
     part_2(contents);
 
     println!("Elapsed: {:?}", start.elapsed());
@@ -71,8 +69,7 @@ fn part_2(contents: &str) {
                 match insert_index {
                     Some(insert_index) if filesystem[insert_index].length == length => {
                         lookup[length as usize - 1] = insert_index + 1;
-                        filesystem[insert_index] = Block::file(id, length);
-                        filesystem[extract_index] = Block::empty(length);
+                        filesystem.swap(extract_index, insert_index);
                         extract_index -= 2;
                     }
                     Some(insert_index) => {
@@ -84,7 +81,7 @@ fn part_2(contents: &str) {
                         extract_index -= 1;
                     }
                     None => {
-                        lookup[length as usize - 1] = extract_index;
+                        lookup[length as usize - 1] = usize::MAX;
                         extract_index -= 1;
                     }
                 }
